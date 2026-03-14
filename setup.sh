@@ -283,6 +283,40 @@ do_omo() {
   ok "oh-my-opencode 설치 완료"
 }
 
+# ── 11. 필수 플러그인 ─────────────────────────────────
+do_plugins() {
+  step "필수 플러그인 설치"
+  echo ""
+  echo -e "  ${D}OpenCode 경험을 향상시키는 핵심 플러그인을 추가합니다.${N}"
+  echo ""
+
+  local config_dir="${HOME}/.config/opencode"
+  local config_file="${config_dir}/opencode.json"
+  mkdir -p "$config_dir"
+
+  node << 'NODEJS'
+const fs = require("fs");
+const path = require("path");
+const p = path.join(process.env.HOME, ".config/opencode/opencode.json");
+let c = {};
+try { c = JSON.parse(fs.readFileSync(p, "utf8")); } catch {}
+if (!c["$schema"]) c["$schema"] = "https://opencode.ai/config.json";
+if (!c.plugin) c.plugin = [];
+["opencode-notificator","opencode-dynamic-context-pruning","opencode-supermemory","opencode-worktree","opencode-vibeguard"]
+  .forEach(x => { if (!c.plugin.includes(x)) c.plugin.push(x); });
+fs.mkdirSync(path.dirname(p), { recursive: true });
+fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
+NODEJS
+
+  ok "opencode-notificator       — 작업 완료 데스크톱 알림"
+  ok "opencode-dynamic-context-pruning — 토큰 자동 절약"
+  ok "opencode-supermemory       — 세션 간 기억 유지"
+  ok "opencode-worktree          — Git worktree 자동화"
+  ok "opencode-vibeguard         — 비밀 정보 자동 보호"
+  echo ""
+  info "다음 opencode 실행 시 자동으로 설치됩니다."
+}
+
 # ── 완료 메시지 ───────────────────────────────────────
 done_msg() {
   echo ""
@@ -301,6 +335,7 @@ done_msg() {
   has claude    && echo -e "    ${G}✓${N} Claude Code"
   has opencode  && echo -e "    ${G}✓${N} OpenCode"
   echo -e "    ${G}✓${N} oh-my-opencode"
+  echo -e "    ${G}✓${N} 필수 플러그인 5개"
 
   echo ""
   echo -e "  ${W}다음 단계:${N}"
@@ -348,6 +383,7 @@ main() {
   do_claude
   do_opencode
   do_omo
+  do_plugins
   done_msg
 }
 

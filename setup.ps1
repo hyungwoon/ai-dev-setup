@@ -3,8 +3,9 @@
   비개발자를 위한 올인원 셋업
 
   설치 항목:
-    Git · Node.js · Bun · Windows Terminal
-    GitHub CLI · Claude Code · OpenCode · oh-my-opencode · 필수 플러그인
+    Git · fnm · Node.js · Bun · pnpm · Windows Terminal
+    GitHub CLI · Claude Code · OpenCode · Vercel · Supabase
+    Docker · uv · oh-my-opencode · 필수 플러그인
 
   사용법:
     irm https://raw.githubusercontent.com/hyungwoon/ai-dev-setup/main/setup.ps1 | iex
@@ -18,6 +19,7 @@ function Write-Header {
   Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
   Write-Host "  AI 개발환경 원클릭 설치 (Windows)" -ForegroundColor White
   Write-Host "     Windows Terminal · Claude Code · OpenCode · oh-my-opencode" -ForegroundColor DarkGray
+  Write-Host "     Vercel · Supabase · Docker · uv" -ForegroundColor DarkGray
   Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
   Write-Host ""
 }
@@ -89,14 +91,26 @@ function Install-Git {
   }
 }
 
-function Install-Node {
-  Write-Step "Node.js (JavaScript 런타임)"
-  if (Test-Cmd "node") {
-    Write-Skip "Node.js $(node --version)"
+function Install-Fnm {
+  Write-Step "fnm + Node.js LTS (JavaScript 런타임)"
+  if (Test-Cmd "fnm") {
+    Write-Skip "fnm"
   } else {
-    winget install OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements -e
+    winget install Schniz.fnm --accept-source-agreements --accept-package-agreements -e
     Refresh-Path
-    if (Test-Cmd "node") { Write-Ok "Node.js 설치 완료" } else { Write-Err "Node.js 설치 실패" }
+    if (Test-Cmd "fnm") { Write-Ok "fnm 설치 완료" } else { Write-Err "fnm 설치 실패"; return }
+  }
+  if (Test-Cmd "fnm") {
+    fnm env --use-on-cd | Out-String | Invoke-Expression 2>$null
+    if (Test-Cmd "node") {
+      Write-Skip "Node.js $(node --version)"
+    } else {
+      Write-Info "Node.js LTS를 설치합니다..."
+      fnm install --lts 2>$null
+      fnm use lts-latest 2>$null
+      Refresh-Path
+      if (Test-Cmd "node") { Write-Ok "Node.js $(node --version) 설치 완료" } else { Write-Warn "Node.js 설치 확인 필요 — 터미널 재시작 후 확인" }
+    }
   }
 }
 
@@ -109,6 +123,17 @@ function Install-Bun {
     npm install -g bun 2>$null
     Refresh-Path
     if (Test-Cmd "bun") { Write-Ok "Bun 설치 완료" } else { Write-Warn "Bun 설치 실패 — npx fallback을 사용합니다." }
+  }
+}
+
+function Install-Pnpm {
+  Write-Step "pnpm (빠른 패키지 매니저)"
+  if (Test-Cmd "pnpm") {
+    Write-Skip "pnpm"
+  } else {
+    npm install -g pnpm
+    Refresh-Path
+    if (Test-Cmd "pnpm") { Write-Ok "pnpm 설치 완료" } else { Write-Err "pnpm 설치 실패" }
   }
 }
 
@@ -165,6 +190,64 @@ function Install-OpenCode {
     npm install -g opencode-ai
     Refresh-Path
     if (Test-Cmd "opencode") { Write-Ok "설치 완료" } else { Write-Err "설치 실패 — https://opencode.ai/docs 참조" }
+  }
+}
+
+function Install-Vercel {
+  Write-Step "Vercel CLI (배포)"
+  if (Test-Cmd "vercel") {
+    Write-Skip "Vercel CLI"
+  } else {
+    if (Test-Cmd "npm") {
+      npm install -g vercel
+      Refresh-Path
+      if (Test-Cmd "vercel") { Write-Ok "Vercel CLI 설치 완료" } else { Write-Warn "설치 확인 필요" }
+    } else {
+      Write-Warn "npm이 없습니다 — Node.js 설치 후 재시도하세요."
+    }
+  }
+}
+
+function Install-Supabase {
+  Write-Step "Supabase CLI (백엔드/DB)"
+  if (Test-Cmd "supabase") {
+    Write-Skip "Supabase CLI"
+  } else {
+    if (Test-Cmd "npm") {
+      npm install -g supabase
+      Refresh-Path
+      if (Test-Cmd "supabase") { Write-Ok "Supabase CLI 설치 완료" } else { Write-Warn "설치 확인 필요 — https://supabase.com/docs/guides/cli 참조" }
+    } else {
+      Write-Warn "npm이 없습니다 — Node.js 설치 후 재시도하세요."
+    }
+  }
+}
+
+function Install-Docker {
+  Write-Step "Docker (컨테이너)"
+  if (Test-Cmd "docker") {
+    Write-Skip "Docker"
+  } else {
+    Write-Info "Docker Desktop을 설치합니다..."
+    winget install Docker.DockerDesktop --accept-source-agreements --accept-package-agreements -e
+    Refresh-Path
+    if (Test-Cmd "docker") {
+      Write-Ok "Docker 설치 완료"
+    } else {
+      Write-Warn "설치 후 재시작이 필요할 수 있습니다."
+      Write-Info "https://docker.com 에서 직접 다운로드할 수도 있습니다."
+    }
+  }
+}
+
+function Install-Uv {
+  Write-Step "uv (Python 패키지 매니저)"
+  if (Test-Cmd "uv") {
+    Write-Skip "uv"
+  } else {
+    irm https://astral.sh/uv/install.ps1 | iex
+    Refresh-Path
+    if (Test-Cmd "uv") { Write-Ok "uv 설치 완료" } else { Write-Warn "설치 확인 필요 — 터미널 재시작 후 확인" }
   }
 }
 
@@ -272,11 +355,17 @@ function Write-DoneMsg {
 
   Write-Host "  설치 결과:" -ForegroundColor White
   if (Test-Cmd "git")      { Write-Host "    ✓ Git" -ForegroundColor Green }
+  if (Test-Cmd "fnm")      { Write-Host "    ✓ fnm" -ForegroundColor Green }
   if (Test-Cmd "node")     { Write-Host "    ✓ Node.js" -ForegroundColor Green }
   if (Test-Cmd "bun")      { Write-Host "    ✓ Bun" -ForegroundColor Green }
+  if (Test-Cmd "pnpm")     { Write-Host "    ✓ pnpm" -ForegroundColor Green }
   if (Test-Cmd "gh")       { Write-Host "    ✓ GitHub CLI" -ForegroundColor Green }
   if (Test-Cmd "claude")   { Write-Host "    ✓ Claude Code" -ForegroundColor Green }
   if (Test-Cmd "opencode") { Write-Host "    ✓ OpenCode" -ForegroundColor Green }
+  if (Test-Cmd "vercel")   { Write-Host "    ✓ Vercel CLI" -ForegroundColor Green }
+  if (Test-Cmd "supabase") { Write-Host "    ✓ Supabase CLI" -ForegroundColor Green }
+  if (Test-Cmd "docker")   { Write-Host "    ✓ Docker" -ForegroundColor Green }
+  if (Test-Cmd "uv")       { Write-Host "    ✓ uv" -ForegroundColor Green }
   Write-Host "    ✓ oh-my-opencode" -ForegroundColor Green
   Write-Host "    ✓ 필수 플러그인 5개" -ForegroundColor Green
 
@@ -284,7 +373,10 @@ function Write-DoneMsg {
   Write-Host "  다음 단계:" -ForegroundColor White
   Write-Host ""
   Write-Host "    1. " -NoNewline -ForegroundColor Cyan
-  Write-Host "AI 서비스 로그인:"
+  Write-Host "서비스 로그인:"
+  Write-Host "       gh auth login" -ForegroundColor Cyan
+  Write-Host "       vercel login" -ForegroundColor Cyan
+  Write-Host "       supabase login" -ForegroundColor Cyan
   Write-Host "       opencode auth login" -ForegroundColor Cyan
   Write-Host "       claude" -ForegroundColor Cyan
   Write-Host ""
@@ -309,12 +401,14 @@ function Main {
 
   Write-Host "  이 스크립트는 다음을 한 번에 설치합니다:" -ForegroundColor DarkGray
   Write-Host ""
-  Write-Host "    • Git, Node.js, Bun              (기본 도구)" -ForegroundColor DarkGray
-  Write-Host "    • Windows Terminal                (터미널)" -ForegroundColor DarkGray
-  Write-Host "    • GitHub CLI                      (GitHub 연동)" -ForegroundColor DarkGray
-  Write-Host "    • Claude Code                     (Anthropic CLI)" -ForegroundColor DarkGray
-  Write-Host "    • OpenCode + oh-my-opencode       (AI 코딩 에이전트)" -ForegroundColor DarkGray
-  Write-Host "    • 필수 플러그인 5개                 (알림, 토큰절약, 메모리 등)" -ForegroundColor DarkGray
+  Write-Host "    • Git, fnm, Node.js, Bun, pnpm     (기본 도구)" -ForegroundColor DarkGray
+  Write-Host "    • Windows Terminal                  (터미널)" -ForegroundColor DarkGray
+  Write-Host "    • GitHub CLI                        (GitHub 연동)" -ForegroundColor DarkGray
+  Write-Host "    • Claude Code                       (Anthropic CLI)" -ForegroundColor DarkGray
+  Write-Host "    • OpenCode + oh-my-opencode         (AI 코딩 에이전트)" -ForegroundColor DarkGray
+  Write-Host "    • Vercel CLI, Supabase CLI          (배포/백엔드)" -ForegroundColor DarkGray
+  Write-Host "    • Docker, uv                        (컨테이너/Python)" -ForegroundColor DarkGray
+  Write-Host "    • 필수 플러그인 5개                    (알림, 토큰절약, 메모리 등)" -ForegroundColor DarkGray
   Write-Host ""
 
   if (-not (Read-YesNo "설치를 시작하시겠습니까?" "y")) {
@@ -324,12 +418,17 @@ function Main {
 
   Install-WingetCheck
   Install-Git
-  Install-Node
+  Install-Fnm
   Install-Bun
+  Install-Pnpm
   Install-WindowsTerminal
   Install-GitHubCLI
   Install-ClaudeCode
   Install-OpenCode
+  Install-Vercel
+  Install-Supabase
+  Install-Docker
+  Install-Uv
   Install-Omo
   Install-Plugins
   Write-DoneMsg

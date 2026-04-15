@@ -4,8 +4,9 @@
 #  비개발자를 위한 올인원 셋업
 #
 #  설치 항목:
-#    Homebrew · Git · Node.js · Bun · Warp Terminal
-#    GitHub CLI · Claude Code · OpenCode · oh-my-opencode
+#    Homebrew · Git · fnm · Node.js · Bun · pnpm · Warp Terminal
+#    GitHub CLI · Claude Code · OpenCode · Vercel · Supabase
+#    Docker · uv · oh-my-opencode
 #
 #  사용법:
 #    bash <(curl -fsSL https://raw.githubusercontent.com/hyungwoon/ai-dev-setup/main/setup.sh)
@@ -25,6 +26,7 @@ header() {
   echo -e "${P}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
   echo -e "${W}  🚀 AI 개발환경 원클릭 설치${N}"
   echo -e "${D}     Warp · Claude Code · OpenCode · oh-my-opencode${N}"
+  echo -e "${D}     Vercel · Supabase · Docker · uv${N}"
   echo -e "${P}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
   echo ""
 }
@@ -119,14 +121,29 @@ do_git() {
   fi
 }
 
-# ── 4. Node.js ────────────────────────────────────────
-do_node() {
-  step "Node.js (JavaScript 런타임)"
-  if has node; then
-    skip "Node.js $(node --version)"
+# ── 4. fnm + Node.js LTS ──────────────────────────────
+do_fnm() {
+  step "fnm + Node.js LTS (JavaScript 런타임)"
+  if has fnm; then
+    skip "fnm"
   else
-    brew install node
-    has node && ok "Node.js $(node --version) 설치 완료" || { err "설치 실패"; exit 1; }
+    brew install fnm
+    has fnm && ok "fnm 설치 완료" || { err "fnm 설치 실패"; exit 1; }
+  fi
+  if has fnm; then
+    eval "$(fnm env --use-on-cd)" 2>/dev/null
+    if has node; then
+      skip "Node.js $(node --version)"
+    else
+      info "Node.js LTS를 설치합니다..."
+      fnm install --lts 2>/dev/null && fnm use lts-latest 2>/dev/null
+      has node && ok "Node.js $(node --version) 설치 완료" \
+        || warn "Node.js 설치 확인 필요 — 터미널 재시작 후 확인하세요."
+    fi
+    if ! grep -q 'fnm env' "${HOME}/.zshrc" 2>/dev/null; then
+      echo 'eval "$(fnm env --use-on-cd)"' >> "${HOME}/.zshrc"
+      info ".zshrc에 fnm PATH 등록 완료"
+    fi
   fi
 }
 
@@ -143,7 +160,18 @@ do_bun() {
   fi
 }
 
-# ── 6. Warp Terminal ──────────────────────────────────
+# ── 6. pnpm ───────────────────────────────────────────
+do_pnpm() {
+  step "pnpm (빠른 패키지 매니저)"
+  if has pnpm; then
+    skip "pnpm $(pnpm --version 2>/dev/null)"
+  else
+    brew install pnpm
+    has pnpm && ok "pnpm 설치 완료" || { err "설치 실패"; exit 1; }
+  fi
+}
+
+# ── 7. Warp Terminal ──────────────────────────────────
 do_warp() {
   step "Warp Terminal (AI 터미널)"
   if [[ -d "/Applications/Warp.app" ]]; then
@@ -210,7 +238,61 @@ do_opencode() {
   fi
 }
 
-# ── 10. oh-my-opencode ────────────────────────────────
+# ── 11. Vercel CLI ────────────────────────────────────
+do_vercel() {
+  step "Vercel CLI (배포)"
+  if has vercel; then
+    skip "Vercel CLI"
+  else
+    if has npm; then
+      npm install -g vercel
+      has vercel && ok "Vercel CLI 설치 완료" || warn "설치 확인 필요"
+    else
+      warn "npm이 없습니다 — Node.js 설치 후 재시도하세요."
+    fi
+  fi
+}
+
+# ── 12. Supabase CLI ─────────────────────────────────
+do_supabase() {
+  step "Supabase CLI (백엔드/DB)"
+  if has supabase; then
+    skip "Supabase CLI"
+  else
+    brew install supabase/tap/supabase
+    has supabase && ok "Supabase CLI 설치 완료" || { err "설치 실패"; exit 1; }
+  fi
+}
+
+# ── 13. Docker ────────────────────────────────────────
+do_docker() {
+  step "Docker (컨테이너)"
+  if [[ -d "/Applications/Docker.app" ]] || has docker; then
+    skip "Docker"
+  else
+    info "Docker Desktop을 설치합니다..."
+    brew install --cask docker
+    if [[ -d "/Applications/Docker.app" ]]; then
+      ok "설치 완료"
+      info "Launchpad에서 Docker를 한번 실행해 초기 설정을 완료하세요."
+    else
+      warn "자동 설치 실패 — https://docker.com 에서 직접 다운로드하세요."
+    fi
+  fi
+}
+
+# ── 14. uv ────────────────────────────────────────────
+do_uv() {
+  step "uv (Python 패키지 매니저)"
+  if has uv; then
+    skip "uv"
+  else
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    has uv && ok "uv 설치 완료" || warn "설치 확인 필요 — 터미널 재시작 후 확인하세요."
+  fi
+}
+
+# ── 15. oh-my-opencode ───────────────────────────────
 do_omo() {
   step "oh-my-opencode (OpenCode 플러그인)"
   echo ""
@@ -328,19 +410,28 @@ done_msg() {
   echo -e "  ${W}설치 결과:${N}"
   has brew      && echo -e "    ${G}✓${N} Homebrew"
   has git       && echo -e "    ${G}✓${N} Git"
+  has fnm       && echo -e "    ${G}✓${N} fnm"
   has node      && echo -e "    ${G}✓${N} Node.js $(node --version 2>/dev/null)"
   has bun       && echo -e "    ${G}✓${N} Bun $(bun --version 2>/dev/null)"
+  has pnpm      && echo -e "    ${G}✓${N} pnpm $(pnpm --version 2>/dev/null)"
   [[ -d "/Applications/Warp.app" ]] && echo -e "    ${G}✓${N} Warp Terminal"
   has gh        && echo -e "    ${G}✓${N} GitHub CLI"
   has claude    && echo -e "    ${G}✓${N} Claude Code"
   has opencode  && echo -e "    ${G}✓${N} OpenCode"
+  has vercel    && echo -e "    ${G}✓${N} Vercel CLI"
+  has supabase  && echo -e "    ${G}✓${N} Supabase CLI"
+  ([[ -d "/Applications/Docker.app" ]] || has docker) && echo -e "    ${G}✓${N} Docker"
+  has uv        && echo -e "    ${G}✓${N} uv"
   echo -e "    ${G}✓${N} oh-my-opencode"
   echo -e "    ${G}✓${N} 필수 플러그인 5개"
 
   echo ""
   echo -e "  ${W}다음 단계:${N}"
   echo ""
-  echo -e "    ${C}1.${N} AI 서비스 로그인:"
+  echo -e "    ${C}1.${N} 서비스 로그인:"
+  echo -e "       ${C}gh auth login${N}        — GitHub 인증"
+  echo -e "       ${C}vercel login${N}         — Vercel 인증"
+  echo -e "       ${C}supabase login${N}       — Supabase 인증"
   echo -e "       ${C}opencode auth login${N}  — OpenCode 인증"
   echo -e "       터미널에서 ${C}claude${N} 입력  — Claude Code 인증"
   echo ""
@@ -364,11 +455,13 @@ main() {
 
   echo -e "  ${D}이 스크립트는 다음을 한 번에 설치합니다:${N}"
   echo ""
-  echo -e "    • Homebrew, Git, Node.js, Bun  ${D}(기본 도구)${N}"
-  echo -e "    • Warp Terminal                 ${D}(AI 터미널)${N}"
-  echo -e "    • GitHub CLI                    ${D}(GitHub 연동)${N}"
-  echo -e "    • Claude Code                   ${D}(Anthropic CLI)${N}"
-  echo -e "    • OpenCode + oh-my-opencode     ${D}(AI 코딩 에이전트)${N}"
+  echo -e "    • Homebrew, Git, fnm, Node.js, Bun, pnpm  ${D}(기본 도구)${N}"
+  echo -e "    • Warp Terminal                            ${D}(AI 터미널)${N}"
+  echo -e "    • GitHub CLI                               ${D}(GitHub 연동)${N}"
+  echo -e "    • Claude Code                              ${D}(Anthropic CLI)${N}"
+  echo -e "    • OpenCode + oh-my-opencode                ${D}(AI 코딩 에이전트)${N}"
+  echo -e "    • Vercel CLI, Supabase CLI                 ${D}(배포/백엔드)${N}"
+  echo -e "    • Docker, uv                               ${D}(컨테이너/Python)${N}"
   echo ""
 
   yn "설치를 시작하시겠습니까?" "y" || { echo -e "\n  ${D}취소됨${N}"; exit 0; }
@@ -376,12 +469,17 @@ main() {
   do_xcode
   do_brew
   do_git
-  do_node
+  do_fnm
   do_bun
+  do_pnpm
   do_warp
   do_gh
   do_claude
   do_opencode
+  do_vercel
+  do_supabase
+  do_docker
+  do_uv
   do_omo
   do_plugins
   done_msg
